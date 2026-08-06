@@ -2,10 +2,9 @@ defmodule DatacryptRfb.Pipeline.Storage do
   @moduledoc """
   Lógica I/O para leitura/escrita Parquet no disco.
   """
-  require Explorer.DataFrame, as: DF
+  alias Explorer.DataFrame, as: DF
   require Logger
 
-  # O Data Lake local ficará na raiz do projeto
   @base_dir "datalake"
 
   @doc """
@@ -23,13 +22,9 @@ defmodule DatacryptRfb.Pipeline.Storage do
   def write_parquet(lazy_df, path) do
     Logger.info("Coletando LazyFrame e escrevendo em Parquet: #{path} (Compressão: zstd)")
     
-    # Criar a estrutura de diretórios caso não exista
     path |> Path.dirname() |> File.mkdir_p!()
 
-    # Coleta a query lazy na memória (ou stream internamente via Rust) 
-    # e grava em disco o formato colunar
     try do
-      # DF.collect/1 materializa o DataFrame e DF.to_parquet!/2 grava no disco
       eager_df = DF.collect(lazy_df)
       DF.to_parquet!(eager_df, path, compression: :zstd)
       

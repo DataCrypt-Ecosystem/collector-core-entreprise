@@ -5,8 +5,6 @@ defmodule DatacryptRfb.Workers.Extractor do
   use GenServer
   require Logger
 
-  # -- Client API --
-
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
@@ -19,7 +17,6 @@ defmodule DatacryptRfb.Workers.Extractor do
     
     File.mkdir_p!(dest_dir)
     
-    # :zip.unzip do Erlang extrai direto pro disco (poupa memória)
     case :zip.unzip(String.to_charlist(zip_path), cwd: String.to_charlist(dest_dir)) do
       {:ok, files} ->
         extracted = Enum.map(files, &List.to_string/1)
@@ -42,14 +39,13 @@ defmodule DatacryptRfb.Workers.Extractor do
     dir = Path.dirname(csv_path)
     base_name = Path.basename(csv_path, ".csv")
     
-    # Lê em stream, divide em lotes e escreve para novos arquivos
     chunk_paths =
-      File.stream!(csv_path, [:read, :utf8])
+      File.stream!(csv_path, [:read])
       |> Stream.chunk_every(lines_per_chunk)
       |> Stream.with_index(1)
       |> Enum.map(fn {lines_batch, index} ->
         chunk_file = Path.join(dir, "#{base_name}_chunk_#{index}.csv")
-        File.write!(chunk_file, lines_batch, [:write, :utf8])
+        File.write!(chunk_file, lines_batch, [:write])
         chunk_file
       end)
 
@@ -70,14 +66,11 @@ defmodule DatacryptRfb.Workers.Extractor do
     |> Enum.reduce({0, 0}, fn 
       {:ok, _result}, {success, error} -> {success + 1, error}
       {:error, _reason}, {success, error} -> {success, error + 1}
-      # Captura de crash na Task
       error, {success, error_count} -> 
         Logger.error("Crash no processamento de um chunk: #{inspect(error)}")
         {success, error_count + 1}
     end)
   end
-
-  # -- Server Callbacks --
 
   @impl true
   def init(state) do

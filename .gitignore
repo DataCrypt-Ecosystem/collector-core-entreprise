@@ -22,3 +22,5 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 datacrypt_rfb-*.tar
 
+# Ignorar base de dados local
+/datalake/
