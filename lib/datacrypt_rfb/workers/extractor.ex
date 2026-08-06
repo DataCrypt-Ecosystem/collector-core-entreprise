@@ -46,9 +46,14 @@ defmodule DatacryptRfb.Workers.Extractor do
       |> Enum.map(fn {lines_batch, index} ->
         chunk_file = Path.join(dir, "#{base_name}_chunk_#{index}.csv")
         File.write!(chunk_file, lines_batch, [:write])
+        
+        # Progresso no terminal
+        IO.write("\r    => Chunking: Lote #{index} gerado (até #{index * lines_per_chunk} linhas)...")
+        
         chunk_file
       end)
-
+      
+    IO.write("\r                                                                      \r")
     Logger.info("Conversão finalizada. #{length(chunk_paths)} chunks gerados.")
     {:ok, chunk_paths}
   end
@@ -57,19 +62,31 @@ defmodule DatacryptRfb.Workers.Extractor do
   Orquestra o processamento paralelo limitando a concorrência via Task.async_stream.
   """
   def process_files(files, process_func, max_concurrency \\ 4) do
-    Logger.info("Iniciando processamento paralelo de #{length(files)} arquivos (Max Concurrency: #{max_concurrency})...")
+    total = length(files)
+    Logger.info("Iniciando processamento paralelo de #{total} arquivos (Max Concurrency: #{max_concurrency})...")
 
     files
     |> Task.async_stream(fn file ->
       process_func.(file)
     end, max_concurrency: max_concurrency, timeout: :infinity)
     |> Enum.reduce({0, 0}, fn 
-      {:ok, _result}, {success, error} -> {success + 1, error}
-      {:error, _reason}, {success, error} -> {success, error + 1}
-      error, {success, error_count} -> 
-        Logger.error("Crash no processamento de um chunk: #{inspect(error)}")
+      {:ok, _result}, {success, error} -> 
+        IO.write("\r    => Processando Dataframes: #{success + error + 1}/#{total} concluídos...")
+        {success + 1, error}
+      {:error, _reason}, {success, error} -> 
+        IO.write("\r    => Processando Dataframes: #{success + error + 1}/#{total} concluídos...")
+        {success, error + 1}
+      error_msg, {success, error_count} -> 
+        Logger.error("Crash no processamento de um chunk: #{inspect(error_msg)}")
+        IO.write("\r    => Processando Dataframes: #{success + error_count + 1}/#{total} concluídos...")
         {success, error_count + 1}
     end)
+    |> case do
+      {s, e} -> 
+        IO.write("\r                                                                      \r")
+        Logger.info("Processamento finalizado. Sucesso: #{s} | Falhas: #{e}")
+        {s, e}
+    end
   end
 
   @impl true
