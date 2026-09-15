@@ -27,8 +27,20 @@ Para iniciar o projeto em seu ambiente local, siga os comandos abaixo:
 # 1. Instale as dependências
 mix deps.get
 
-# 2. Execute a tarefa principal de orquestração e download
+# 2. Opcional: substitua o token do compartilhamento público
+export RFB_PUBLIC_SHARE_TOKEN='gn672Ad4CF8N6TK'
+
+# Para um WebDAV privado, use Basic Auth no formato usuario:senha:
+# export RFB_WEBDAV_AUTH='usuario:senha'
+
+# 3. Execute a tarefa principal de orquestração e download
 mix rfb.baixar
 ```
+
+Por padrão, os arquivos temporários são gravados em `./tmp/rfb`, no volume
+principal do projeto. Para alterar o local, defina `RFB_TMP_DIR`.
+
+Os CSVs são lidos com os schemas oficiais por entidade, têm os espaços
+externos removidos e o campo `capital_social` é convertido para número.
 
 Após o processamento concluído com sucesso, todos os arquivos organizados estarão disponíveis dentro da pasta `datalake/` na raiz do seu repositório.

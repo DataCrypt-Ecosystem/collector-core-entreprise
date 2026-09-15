@@ -59,6 +59,50 @@ defmodule DatacryptRfb.Workers.Extractor do
   end
 
   @doc """
+  Processa um CSV em fluxo, mantendo somente os chunks em execução na memória
+  e no disco temporário. Cada chunk é removido assim que termina.
+  """
+  def process_csv(csv_path, process_func, lines_per_chunk \\ 500_000, max_concurrency \\ 4) do
+    Logger.info(
+      "Processando #{csv_path} em chunks de #{lines_per_chunk} linhas " <>
+        "(Max Concurrency: #{max_concurrency})..."
+    )
+
+    dir = Path.dirname(csv_path)
+    base_name = Path.basename(csv_path, ".csv")
+
+    File.stream!(csv_path, [:read])
+    |> Stream.chunk_every(lines_per_chunk)
+    |> Stream.with_index(1)
+    |> Task.async_stream(
+      fn {lines_batch, index} ->
+        chunk_file = Path.join(dir, "#{base_name}_chunk_#{index}.csv")
+        File.write!(chunk_file, lines_batch, [:write])
+
+        try do
+          process_func.(chunk_file)
+        after
+          File.rm(chunk_file)
+        end
+      end,
+      max_concurrency: max_concurrency,
+      timeout: :infinity
+    )
+    |> Enum.reduce({0, 0}, fn
+      {:ok, _result}, {success, errors} ->
+        {success + 1, errors}
+
+      {:error, reason}, {success, errors} ->
+        Logger.error("Falha no processamento de um chunk: #{inspect(reason)}")
+        {success, errors + 1}
+    end)
+    |> then(fn {success, errors} = result ->
+      Logger.info("Processamento finalizado. Sucesso: #{success} | Falhas: #{errors}")
+      result
+    end)
+  end
+
+  @doc """
   Orquestra o processamento paralelo limitando a concorrência via Task.async_stream.
   """
   def process_files(files, process_func, max_concurrency \\ 4) do

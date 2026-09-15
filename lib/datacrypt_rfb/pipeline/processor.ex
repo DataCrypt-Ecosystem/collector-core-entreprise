@@ -3,6 +3,8 @@ defmodule DatacryptRfb.Pipeline.Processor do
   Lógica com Explorer/Polars (Limpeza, Tipagem, Delta).
   """
   alias Explorer.DataFrame, as: DF
+  alias Explorer.Series, as: S
+  alias DatacryptRfb.Pipeline.Schema
   require Logger
 
   @doc """
@@ -11,11 +13,23 @@ defmodule DatacryptRfb.Pipeline.Processor do
   Geralmente os dados da RFB não possuem cabeçalho e usam ';' como separador.
   Como usamos lazy: true, o arquivo só será processado em disco quando houver uma ação de collect/write.
   """
-  def lazy_read_csv(csv_path, column_mapping \\ []) do
+  def lazy_read_csv(csv_path, entity) when is_binary(entity) do
     Logger.info("Carregando LazyFrame para o CSV: #{csv_path}")
-    
-    DF.from_csv!(csv_path, delimiter: ";", header: false, lazy: true, encoding: "utf8-lossy")
-    |> DF.rename(column_mapping)
+
+    columns = Schema.columns(entity)
+
+    if is_nil(columns) do
+      raise ArgumentError, "Schema não definido para a entidade #{inspect(entity)}"
+    end
+
+    DF.from_csv!(csv_path,
+      delimiter: ";",
+      header: false,
+      lazy: true,
+      encoding: "utf8-lossy",
+      infer_schema_length: 0
+    )
+    |> DF.rename(columns)
   end
 
   @doc """
@@ -23,7 +37,21 @@ defmodule DatacryptRfb.Pipeline.Processor do
   O Rust processará essas regras de forma otimizada.
   """
   def clean_and_cast(lazy_df) do
-    lazy_df
+    DF.mutate_with(lazy_df, fn query ->
+      Enum.map(lazy_df.names, fn
+        "capital_social" ->
+          capital_social =
+            query["capital_social"]
+            |> S.strip()
+            |> S.replace(",", ".")
+            |> S.cast(:float)
+
+          {"capital_social", capital_social}
+
+        name ->
+          {name, S.strip(query[name])}
+      end)
+    end)
   end
 
   @doc """
