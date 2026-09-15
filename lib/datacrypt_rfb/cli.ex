@@ -51,7 +51,7 @@ defmodule DatacryptRfb.Cli do
       [partition]
     else
       raise ArgumentError,
-        "partição inválida #{inspect(partition)}; use YYYY ou YYYY-MM"
+            "partição inválida #{inspect(partition)}; use YYYY ou YYYY-MM"
     end
   end
 
@@ -65,29 +65,34 @@ defmodule DatacryptRfb.Cli do
     case Downloader.list_zip_files(folder_url) do
       {:ok, urls} ->
         Logger.info("Encontrados #{length(urls)} arquivos ZIP para processar.")
-        
+
         Enum.each(urls, fn url ->
           file_name = URI.parse(url).path |> Path.basename()
           # Remove números do final (ex: "Empresas0.zip" -> "empresas")
-          entity = Regex.replace(~r/\d+$/, Path.basename(file_name, ".zip"), "") |> String.downcase()
-          
+          entity =
+            Regex.replace(~r/\d+$/, Path.basename(file_name, ".zip"), "") |> String.downcase()
+
           temp_dir = Path.join(temporary_root(), "datacrypt_rfb_#{entity}_#{partition_id}")
           zip_path = Path.join(temp_dir, file_name)
-          
+
           Logger.info("Processando #{file_name} (Entidade: #{entity})...")
 
           # Remove resíduos de uma execução interrompida antes de reutilizar
           # o diretório da mesma entidade e competência.
           File.rm_rf!(temp_dir)
           File.mkdir_p!(temp_dir)
-          
+
           with {:ok, ^zip_path} <- Downloader.download_file(url, zip_path),
                {:ok, csv_files} <- Extractor.unzip(zip_path, temp_dir) do
-            
             Enum.each(csv_files, fn csv_path ->
-              Extractor.process_csv(csv_path, fn chunk_file ->
-                process_chunk(chunk_file, entity, partition_id)
-              end, 500_000, 4)
+              Extractor.process_csv(
+                csv_path,
+                fn chunk_file ->
+                  process_chunk(chunk_file, entity, partition_id)
+                end,
+                500_000,
+                4
+              )
             end)
 
             File.rm_rf!(temp_dir)
@@ -98,10 +103,10 @@ defmodule DatacryptRfb.Cli do
               File.rm_rf!(temp_dir)
           end
         end)
-        
+
         Logger.info("Processamento da partição #{partition_id} 100% finalizado!")
         :ok
-        
+
       {:error, reason} ->
         Logger.error("Falha ao listar arquivos: #{inspect(reason)}")
         {:error, reason}
@@ -111,7 +116,7 @@ defmodule DatacryptRfb.Cli do
   defp process_chunk(chunk_csv_path, entity, partition_id) do
     chunk_id = Path.basename(chunk_csv_path, ".csv")
     parquet_path = Storage.build_path("receita_federal", entity, "#{partition_id}_#{chunk_id}")
-    
+
     old_parquet = Storage.build_path("receita_federal", entity, "mes_anterior")
 
     chunk_csv_path
@@ -121,7 +126,7 @@ defmodule DatacryptRfb.Cli do
     |> Storage.write_parquet(parquet_path)
 
     File.rm(chunk_csv_path)
-    
+
     {:ok, parquet_path}
   end
 end

@@ -27,7 +27,8 @@ defmodule DatacryptRfb.Workers.Downloader do
         {:error, reason}
 
       opts ->
-        folder_url = if String.ends_with?(folder_url, "/"), do: folder_url, else: folder_url <> "/"
+        folder_url =
+          if String.ends_with?(folder_url, "/"), do: folder_url, else: folder_url <> "/"
 
         req_opts =
           opts
@@ -43,8 +44,10 @@ defmodule DatacryptRfb.Workers.Downloader do
               |> Enum.map(fn path -> URI.merge(folder_url, path) |> URI.to_string() end)
 
             {:ok, hrefs}
+
           {:ok, response} ->
             {:error, {:bad_status, response.status}}
+
           {:error, reason} ->
             {:error, reason}
         end
@@ -72,15 +75,18 @@ defmodule DatacryptRfb.Workers.Downloader do
         req_opts =
           opts
           |> Keyword.put(:into, fn {:data, data}, {req, res} ->
-            downloaded = Agent.get_and_update(counter, fn acc ->
-              new = acc + byte_size(data)
-              {new, new}
-            end)
+            downloaded =
+              Agent.get_and_update(counter, fn acc ->
+                new = acc + byte_size(data)
+                {new, new}
+              end)
 
             prev = downloaded - byte_size(data)
 
             if div(downloaded, 5_242_880) > div(prev, 5_242_880) do
-              IO.write("\r    => Progresso: #{Float.round(downloaded / 1048576, 1)} MB baixados...")
+              IO.write(
+                "\r    => Progresso: #{Float.round(downloaded / 1_048_576, 1)} MB baixados..."
+              )
             end
 
             IO.binwrite(file, data)
@@ -95,7 +101,7 @@ defmodule DatacryptRfb.Workers.Downloader do
         result = Req.get(url, req_opts)
 
         File.close(file)
-        final_mb = Float.round(Agent.get(counter, & &1) / 1048576, 1)
+        final_mb = Float.round(Agent.get(counter, & &1) / 1_048_576, 1)
         Agent.stop(counter)
         IO.write("\r                                                                      \r")
 

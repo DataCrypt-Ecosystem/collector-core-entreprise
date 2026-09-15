@@ -21,13 +21,13 @@ defmodule DatacryptRfb.Pipeline.Storage do
   """
   def write_parquet(lazy_df, path) do
     Logger.info("Coletando LazyFrame e escrevendo em Parquet: #{path} (Compressão: zstd)")
-    
+
     path |> Path.dirname() |> File.mkdir_p!()
 
     try do
       eager_df = DF.collect(lazy_df)
       DF.to_parquet!(eager_df, path, compression: :zstd)
-      
+
       Logger.info("Escrita Parquet concluída com sucesso!")
       {:ok, path}
     rescue

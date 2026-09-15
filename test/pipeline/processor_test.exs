@@ -7,7 +7,8 @@ defmodule DatacryptRfb.Pipeline.ProcessorTest do
   alias Explorer.DataFrame, as: DF
 
   test "lê empresas sem cabeçalho, aplica schema e tipa capital social" do
-    path = Path.join(System.tmp_dir!(), "rfb_processor_test_#{System.unique_integer([:positive])}.csv")
+    path =
+      Path.join(System.tmp_dir!(), "rfb_processor_test_#{System.unique_integer([:positive])}.csv")
 
     File.write!(
       path,
@@ -38,7 +39,9 @@ defmodule DatacryptRfb.Pipeline.ProcessorTest do
   end
 
   test "processa chunks em fluxo e remove cada arquivo temporário" do
-    path = Path.join(System.tmp_dir!(), "rfb_extractor_test_#{System.unique_integer([:positive])}.csv")
+    path =
+      Path.join(System.tmp_dir!(), "rfb_extractor_test_#{System.unique_integer([:positive])}.csv")
+
     File.write!(path, "1\n2\n3\n4\n5\n")
     on_exit(fn -> File.rm(path) end)
 

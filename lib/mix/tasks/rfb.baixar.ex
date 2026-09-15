@@ -8,7 +8,7 @@ defmodule Mix.Tasks.Rfb.Baixar do
   @impl Mix.Task
   def run(args) do
     Mix.Task.run("app.start")
-    
+
     DatacryptRfb.Cli.process(args)
   end
 end

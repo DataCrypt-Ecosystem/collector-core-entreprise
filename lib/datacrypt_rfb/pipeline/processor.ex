@@ -9,7 +9,7 @@ defmodule DatacryptRfb.Pipeline.Processor do
 
   @doc """
   Lê um arquivo CSV fragmentado da Receita Federal como um LazyFrame.
-  
+
   Geralmente os dados da RFB não possuem cabeçalho e usam ';' como separador.
   Como usamos lazy: true, o arquivo só será processado em disco quando houver uma ação de collect/write.
   """
@@ -56,19 +56,22 @@ defmodule DatacryptRfb.Pipeline.Processor do
 
   @doc """
   Aplica a Estratégia de Delta (Upsert Lógico).
-  
+
   Lê o Parquet do mês anterior, compara com o novo lote, e devolve
   um LazyFrame contendo apenas as inserções ou atualizações (Delta).
   """
   def compute_delta(new_lazy_df, old_parquet_path, join_keys) do
     if File.exists?(old_parquet_path) do
       Logger.info("Computando Delta contra Parquet anterior: #{old_parquet_path}")
-      
+
       old_lazy_df = DF.from_parquet!(old_parquet_path, lazy: true)
-      
+
       DF.join(new_lazy_df, old_lazy_df, how: :anti, on: join_keys)
     else
-      Logger.info("Parquet anterior não encontrado. Todo o lote atual será considerado como Delta novo.")
+      Logger.info(
+        "Parquet anterior não encontrado. Todo o lote atual será considerado como Delta novo."
+      )
+
       new_lazy_df
     end
   end
