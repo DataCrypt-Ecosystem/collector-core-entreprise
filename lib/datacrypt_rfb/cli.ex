@@ -115,9 +115,9 @@ defmodule DatacryptRfb.Cli do
 
   defp process_chunk(chunk_csv_path, entity, partition_id) do
     chunk_id = Path.basename(chunk_csv_path, ".csv")
-    parquet_path = Storage.build_path("receita_federal", entity, "#{partition_id}_#{chunk_id}")
+    parquet_path = Storage.build_path("receita_federal", entity, partition_id, chunk_id)
 
-    old_parquet = Storage.build_path("receita_federal", entity, "mes_anterior")
+    old_parquet = Storage.legacy_path("receita_federal", entity, "mes_anterior")
 
     chunk_csv_path
     |> Processor.lazy_read_csv(entity)

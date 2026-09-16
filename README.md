@@ -44,3 +44,23 @@ Os CSVs são lidos com os schemas oficiais por entidade, têm os espaços
 externos removidos e o campo `capital_social` é convertido para número.
 
 Após o processamento concluído com sucesso, todos os arquivos organizados estarão disponíveis dentro da pasta `datalake/` na raiz do seu repositório.
+
+O layout do Data Lake usa partições por competência:
+
+```text
+datalake/receita_federal/empresas/competencia=2026-08/part-*.parquet
+datalake/receita_federal/estabelecimentos/competencia=2026-08/part-*.parquet
+datalake/receita_federal/socios/competencia=2026-08/part-*.parquet
+```
+
+Para migrar arquivos do layout antigo sem reprocessá-los, valide primeiro:
+
+```bash
+mix rfb.datalake.migrate --dry-run
+```
+
+Depois execute a migração:
+
+```bash
+mix rfb.datalake.migrate
+```
